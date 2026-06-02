@@ -1,0 +1,35 @@
+/* Fonts are loaded via <link> tags in app/layout.tsx (runtime, not a build-time
+   @import) so the Tailwind build never depends on fetching a remote stylesheet. */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-heading: "Helvetica Now Display Bold", sans-serif;
+  --font-body: "Inter", sans-serif;
+  --color-text: #192837;
+  --color-accent: #7342e2;
+  --color-paper: #f2f2ee;
+}
+
+html {
+  scroll-behavior: smooth;
+  overflow-x: hidden;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  min-height: 100vh;
+  overflow-x: hidden;
+  width: 100%;
+}
+
+/* Guard against flex/grid children forcing horizontal overflow on mobile. */
+img,
+svg,
+video,
+pre {
+  max-width: 100%;
+}

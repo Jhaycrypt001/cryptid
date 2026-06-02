@@ -1,0 +1,23 @@
+node_modules/
+
+# Secrets — never commit (defense in depth; private keys live here)
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.local
+
+dist/
+*.log
+.DS_Store
+
+# Next.js
+apps/web/.next/
+apps/web/out/
+apps/web/.data/
+apps/web/node_modules/
+
+# Foundry (added in a later phase)
+contracts/out/
+contracts/cache/
+contracts/broadcast/

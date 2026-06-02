@@ -1,0 +1,72 @@
+# CryptId — Progress
+
+Ticked after each phase ships. See [ARCHITECTURE.md](./ARCHITECTURE.md) for the full design
+and [README.md](./README.md) for run steps.
+
+---
+
+## ✅ Phase 0 — CDR SDK de-risk harness
+- [x] Mirror the official cdr-skill client setup (`src/client.ts`)
+- [x] Owner-only claim round-trip (`pnpm secret`)
+- [x] Selective disclosure to a verifier (`pnpm disclose`)
+- [x] `pnpm install` + `tsc --noEmit` pass — SDK API confirmed real
+- [x] **Live threshold round-trip CONFIRMED on Aeneid** (`pnpm secret`, vault 4937 decrypted ✅)
+
+## ✅ Phase 1 — CryptId wallet (`apps/web`)
+- [x] Next.js 14 + Tailwind scaffold, builds & boots green
+- [x] CDR isolated in `lib/cdr/` (server-side custody, swappable signer)
+- [x] Issue encrypted claim (self / disclose-to-verifier)
+- [x] Owner dashboard — decrypt your own claims
+- [x] Verifier portal — decrypt only disclosed claims
+- [x] WASM SDK bundles (kept external); graceful no-key state
+- [x] **Selective disclosure CONFIRMED live** (`pnpm disclose`, vault 4938: verifier ✅, owner ❌)
+
+## ✅ Phase 1.5 — Landing page + white/black redesign
+- [x] Light theme across the whole app (paper #F2F2EE / ink #192837 / accent #7342E2)
+- [x] Helvetica Now Display headings + Inter body (font @imports verified in built CSS)
+- [x] Framer Motion fade-ups + Lucide icons added
+- [x] Video-backed hero: navbar, mobile slide-in sheet, inline-icon heading, CTA
+- [x] Light-rethemed dashboard, verifier portal, create form, claim cards, tabs
+- [x] `tsc` + `build` green; `/` static, `/app` + `/verify` dynamic
+- [x] Replaced hero video with a pure CSS/Motion animated background (no external asset)
+- [x] Long-form landing rebuilt to the reference structure: eyebrow labels, numbered
+      capability rows + monochrome diagrams, black process section w/ code, stats grid,
+      bordered ecosystem grid, privacy + developer sections, closing CTA, multi-column footer
+- [x] Black/white CTA treatment (ink primary buttons, accent used sparingly)
+- [ ] Wire the real GitHub repo link (currently a placeholder)
+
+## 🟡 Phase 2 — Custom condition contracts (Foundry) — built & deployed; not callable on Aeneid
+- [x] `IReadCondition` interface (exact `checkReadCondition` shape from the SDK)
+- [x] `TimeBoundReadCondition` (stateless — auto-expiring access)
+- [x] `RevocableAllowlistReadCondition` (grant/revoke — the "money shot")
+- [x] `forge build` + `forge test` green (8/8 passing)
+- [x] `Deploy.s.sol` deploy script
+- [x] **Deployed to Aeneid (2026-06-01):** TimeBound `0x6e2D615cB0A5BC59a2ceC644f7D7aB5dF5563b40`,
+      Revocable `0x83c8d5650ebF8B01AE7c68D05bE008c4aa41dC2f` — bytecode verified, wired into `.env.local`
+- [x] `pnpm revoke` harness: deploy → allocate → grant → read ✅ → revoke → read ❌
+- [x] Wire grant/revoke into the wallet UI (revocable-disclosure claims + Grant/Revoke
+      buttons with live granted-status; auto-hides when the contract isn't configured)
+- [x] Time-bound disclosure wired into the wallet UI (duration picker + live expiry
+      countdown on the claim card; auto-hides when the contract isn't configured)
+- [x] **Confirmed live (negative result):** Aeneid's CDR precompile does NOT call arbitrary
+      custom read conditions. Our contract returns `true` (verified via `cast call` after grant),
+      yet the CDR read reverts (vault 4939). Only EOA + pre-deployed `LicenseReadCondition` work.
+      → Revocable/time-bound disabled in `.env.local`; demo uses working EOA disclosure. Contracts
+      remain as a ready design pending CDR support for custom conditions.
+
+## ✅ Phase 2.5 — Newbie-proof UX
+- [x] Plain-language "Create → Disclose → Decrypt" explainer on the dashboard
+- [x] Owner's disclosed claims show "🔒 Locked to verifier … open Verifier portal" (no failing button)
+- [x] Human-readable denial / timeout messages (no raw "reverted")
+- [x] Production tone ("verifier", not "demo verifier")
+
+## ⬜ Phase 3 — Toward production ("ship real")
+- [ ] **Self-custody:** connect user's own wallet (wagmi/WalletConnect) instead of env keys
+- [ ] Verifier request/approve flow + shareable disclosure link/QR
+- [ ] Persistent store (DB) instead of local `.data/claims.json`
+- [ ] Mainnet when CDR mainnet + production confidentiality are available
+- [ ] Demo video + submission writeup + GitHub link
+- [ ] Encrypted-file claims (credential PDF via `uploadFile` → IPFS)
+- [ ] Paid / token-gated verification (`LicenseReadCondition`) marketplace angle
+- [ ] CryptId Agent with scoped encrypted memory
+- [ ] Demo video + submission writeup
