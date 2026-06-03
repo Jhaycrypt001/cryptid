@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { Providers } from "@/components/Providers";
 
 export const metadata: Metadata = {
   title: "CryptId · confidential identity rails",
@@ -27,7 +28,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           href="https://db.onlinewebfonts.com/c/04e6981992c0e2e7642af2074ebe3901?family=Helvetica+Now+Display+Bold"
         />
       </head>
-      <body className="overflow-x-hidden font-body text-ink antialiased">{children}</body>
+      <body className="overflow-x-hidden font-body text-ink antialiased">
+        <Providers>{children}</Providers>
+      </body>
     </html>
   );
 }

@@ -60,12 +60,29 @@ and [README.md](./README.md) for run steps.
 - [x] Human-readable denial / timeout messages (no raw "reverted")
 - [x] Production tone ("verifier", not "demo verifier")
 
-## ⬜ Phase 3 — Toward production ("ship real")
-- [ ] **Self-custody:** connect user's own wallet (wagmi/WalletConnect) instead of env keys
-- [ ] Verifier request/approve flow + shareable disclosure link/QR
-- [ ] Persistent store (DB) instead of local `.data/claims.json`
-- [ ] Mainnet when CDR mainnet + production confidentiality are available
-- [ ] Demo video + submission writeup + GitHub link
+## ✅ Phase 3 — Self-custody (the real product)
+- [x] **Browser CDR proven** — SDK + WASM run client-side; user's MetaMask signs
+      allocate/write/read (verified live, vault 4970 round-trip)
+- [x] **Connect Wallet** — WalletProvider + ConnectButton, Aeneid auto-add/switch
+- [x] No server custody — removed env-key server actions/client/store; CDR runs in-browser
+- [x] Disclose to **any** wallet address (not a fixed verifier)
+- [x] **Shareable link + QR**; link-driven verifier portal (connect → decrypt)
+- [x] Claims stored client-side (localStorage, per owner address)
+- [x] `/api/story` proxy for browser CORS; landing stays light (SDK code-split)
+- [x] **Production wallet connect** — wagmi + RainbowKit (MetaMask, injected, and
+      WalletConnect QR for any/mobile wallet); bridges wagmi's viem client into CDR
+- [x] **Verifier request flow** (`/request`) — verifier asks for a claim via link/QR;
+      dashboard pre-fills the form to disclose back
+- [x] **Verifiable-credentials triangle** (inspired by Polygon ID / EAS / Disco):
+      - Issuer (`/issue`) signs a credential (EIP-712, no gas) → import link/QR
+      - Holder imports → signature embedded in the encrypted vault payload
+      - Verifier decrypts → signature verified → "Issued & verified / issuer 0x…" badge
+- [x] **Verifier inbox** — decrypted claims saved to "Shared with me" (per-verifier localStorage)
+- [ ] Verify the new flows in-browser (your test) ⟵ next
+- [ ] Persistent/indexed store (optional), mainnet when CDR mainnet ships
+
+## ⬜ Submission polish
+- [ ] Demo video + writeup; commit the self-custody refactor
 - [ ] Encrypted-file claims (credential PDF via `uploadFile` → IPFS)
 - [ ] Paid / token-gated verification (`LicenseReadCondition`) marketplace angle
 - [ ] CryptId Agent with scoped encrypted memory

@@ -1,8 +1,12 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { createClaimAction } from "@/app/actions";
-import type { ClaimType } from "@/lib/types";
+import { useState } from "react";
+import { isAddress, type Address } from "viem";
+import type { CDRClient } from "@piplabs/cdr-sdk";
+import { createClaimOnChain } from "@/lib/cdr/browser";
+import { addClaim } from "@/lib/localClaims";
+import type { Audience, ClaimType, Claim } from "@/lib/types";
+import type { SignedCredential } from "@/lib/credential";
 
 const TYPES: { value: ClaimType; label: string }[] = [
   { value: "age_over_18", label: "Age over 18" },
@@ -14,65 +18,100 @@ const TYPES: { value: ClaimType; label: string }[] = [
   { value: "apiKey", label: "API key" },
 ];
 
-const TTL_OPTIONS = [
-  { label: "5 minutes", seconds: 300 },
-  { label: "1 hour", seconds: 3600 },
-  { label: "24 hours", seconds: 86400 },
-];
-
-type Mode = "permanent" | "revocable" | "timebound";
-
 const inputCls =
   "w-full rounded-lg border border-edge bg-paper px-3 py-2 text-ink outline-none focus:border-accent";
 
 export function CreateClaimForm({
-  verifierAddress,
-  revocableEnabled,
-  timeboundEnabled,
+  account,
+  client,
+  onCreated,
+  initial,
 }: {
-  verifierAddress: string;
-  revocableEnabled: boolean;
-  timeboundEnabled: boolean;
+  account: Address;
+  client: CDRClient;
+  onCreated: () => void;
+  initial?: { type?: ClaimType; verifier?: string; credential?: SignedCredential };
 }) {
-  const [pending, start] = useTransition();
-  const [disclose, setDisclose] = useState(false);
-  const [mode, setMode] = useState<Mode>(
-    revocableEnabled ? "revocable" : timeboundEnabled ? "timebound" : "permanent",
+  const credential = initial?.credential;
+  const [type, setType] = useState<ClaimType>(
+    (credential?.claimType as ClaimType) ?? initial?.type ?? "age_over_18",
   );
-  const [ttl, setTtl] = useState(TTL_OPTIONS[0].seconds);
+  const [label, setLabel] = useState("");
+  const [value, setValue] = useState(credential?.value ?? "");
+  const [disclose, setDisclose] = useState(Boolean(initial?.verifier));
+  const [verifier, setVerifier] = useState(initial?.verifier ?? "");
+  const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
-  const kindFor = (m: Mode) =>
-    m === "permanent" ? "eoa" : m === "revocable" ? "revocable" : "timebound";
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    if (!label.trim() || !value.trim()) return setError("Label and value are required.");
+    let audience: Audience = "self";
+    if (disclose) {
+      if (!isAddress(verifier)) return setError("Enter a valid verifier address (0x…).");
+      audience = verifier as Address;
+    }
+
+    setBusy(true);
+    try {
+      setStatus("Allocating vault… (approve in wallet)");
+      const vaultUuid = await createClaimOnChain(client, account, {
+        type,
+        value: value.trim(),
+        audience,
+        credential,
+      });
+
+      const claim: Claim = {
+        id: crypto.randomUUID(),
+        vaultUuid,
+        type,
+        label: label.trim(),
+        audience,
+        kind: audience === "self" ? "self" : "eoa",
+        createdAt: Date.now(),
+      };
+      addClaim(account, claim);
+      setStatus(null);
+      setLabel("");
+      setValue("");
+      setVerifier("");
+      setDisclose(false);
+      onCreated();
+    } catch (err) {
+      setError((err as Error).message.split("\n")[0]);
+      setStatus(null);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
-    <form
-      action={(fd) => {
-        setError(null);
-        if (!disclose) {
-          fd.set("audience", "self");
-          fd.set("kind", "self");
-        } else {
-          fd.set("audience", verifierAddress);
-          fd.set("kind", kindFor(mode));
-          if (mode === "timebound") fd.set("ttl", String(ttl));
-        }
-        start(async () => {
-          try {
-            await createClaimAction(fd);
-          } catch (e) {
-            setError((e as Error).message);
-          }
-        });
-      }}
-      className="space-y-3 rounded-2xl border border-edge bg-surface p-5 shadow-soft"
-    >
+    <form onSubmit={submit} className="space-y-3 rounded-2xl border border-edge bg-surface p-5 shadow-soft">
       <h2 className="font-heading text-lg text-ink">Issue a claim</h2>
+
+      {credential && (
+        <div className="rounded-xl border border-accent/40 bg-accent/5 p-3 text-xs text-ink">
+          🏛️ Signed credential from issuer{" "}
+          <span className="font-mono">
+            {credential.issuer.slice(0, 6)}…{credential.issuer.slice(-4)}
+          </span>
+          . Type and value are locked to what was signed; the signature will be embedded so a
+          verifier can confirm it.
+        </div>
+      )}
 
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="text-sm">
           <span className="mb-1 block text-muted">Type</span>
-          <select name="type" className={inputCls}>
+          <select
+            value={type}
+            onChange={(e) => setType(e.target.value as ClaimType)}
+            disabled={Boolean(credential)}
+            className={`${inputCls} disabled:opacity-60`}
+          >
             {TYPES.map((t) => (
               <option key={t.value} value={t.value}>
                 {t.label}
@@ -80,127 +119,50 @@ export function CreateClaimForm({
             ))}
           </select>
         </label>
-
         <label className="text-sm">
           <span className="mb-1 block text-muted">Label</span>
-          <input name="label" placeholder="e.g. Over 18" className={inputCls} />
+          <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. Over 18" className={inputCls} />
         </label>
       </div>
 
       <label className="block text-sm">
-        <span className="mb-1 block text-muted">Value (encrypted client-side)</span>
-        <input name="value" placeholder="e.g. true" className={inputCls} />
+        <span className="mb-1 block text-muted">Value (encrypted in your browser)</span>
+        <input
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          readOnly={Boolean(credential)}
+          placeholder="e.g. true"
+          className={`${inputCls} read-only:opacity-60`}
+        />
       </label>
 
       <label className="flex items-center gap-2 text-sm text-muted">
-        <input
-          type="checkbox"
-          checked={disclose}
-          onChange={(e) => setDisclose(e.target.checked)}
-          className="accent-accent"
-        />
-        Disclose to verifier{" "}
-        {verifierAddress && (
-          <code className="text-xs text-accent">
-            {verifierAddress.slice(0, 6)}…{verifierAddress.slice(-4)}
-          </code>
-        )}
+        <input type="checkbox" checked={disclose} onChange={(e) => setDisclose(e.target.checked)} className="accent-accent" />
+        Disclose to a verifier
       </label>
 
       {disclose && (
-        <div className="space-y-2 rounded-xl border border-edge bg-paper p-3 text-sm">
-          <ModeRow
-            id="permanent"
-            title="Permanent"
-            desc="Gated to the verifier's address. Cannot be revoked."
-            checked={mode === "permanent"}
-            onSelect={() => setMode("permanent")}
-          />
-          <ModeRow
-            id="revocable"
-            title="Revocable"
-            desc={
-              revocableEnabled
-                ? "Gated by the allowlist contract. Grant and revoke any time."
-                : "Set REVOCABLE_CONDITION_ADDRESS to enable."
-            }
-            checked={mode === "revocable"}
-            disabled={!revocableEnabled}
-            onSelect={() => setMode("revocable")}
-          />
-          <ModeRow
-            id="timebound"
-            title="Time-bound"
-            desc={
-              timeboundEnabled
-                ? "Gated by the time-window contract. Access expires on its own."
-                : "Set TIMEBOUND_CONDITION_ADDRESS to enable."
-            }
-            checked={mode === "timebound"}
-            disabled={!timeboundEnabled}
-            onSelect={() => setMode("timebound")}
-          />
-
-          {mode === "timebound" && timeboundEnabled && (
-            <label className="block pt-1">
-              <span className="mb-1 block text-xs text-muted">Access expires after</span>
-              <select
-                value={ttl}
-                onChange={(e) => setTtl(Number(e.target.value))}
-                className={inputCls}
-              >
-                {TTL_OPTIONS.map((o) => (
-                  <option key={o.seconds} value={o.seconds}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-        </div>
+        <label className="block text-sm">
+          <span className="mb-1 block text-muted">Verifier wallet address</span>
+          <input value={verifier} onChange={(e) => setVerifier(e.target.value)} placeholder="0x…" className={`${inputCls} font-mono`} />
+          <span className="mt-1 block text-xs text-muted">
+            Only this address will ever be able to decrypt the claim.
+          </span>
+        </label>
       )}
 
       <button
         type="submit"
-        disabled={pending}
-        className="rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-white shadow-accent transition hover:brightness-110 disabled:opacity-50"
+        disabled={busy}
+        className="rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-ink/90 disabled:opacity-50"
       >
-        {pending ? "Encrypting + writing on-chain…" : "Create encrypted claim"}
+        {busy ? status ?? "Working…" : "Create encrypted claim"}
       </button>
 
+      {busy && (
+        <p className="text-xs text-muted">Two wallet signatures: allocate, then write.</p>
+      )}
       {error && <p className="text-sm text-red-600">{error}</p>}
     </form>
-  );
-}
-
-function ModeRow({
-  title,
-  desc,
-  checked,
-  disabled,
-  onSelect,
-}: {
-  id: string;
-  title: string;
-  desc: string;
-  checked: boolean;
-  disabled?: boolean;
-  onSelect: () => void;
-}) {
-  return (
-    <label className={`flex items-start gap-2 ${disabled ? "opacity-50" : ""}`}>
-      <input
-        type="radio"
-        name="mode"
-        checked={checked}
-        disabled={disabled}
-        onChange={onSelect}
-        className="mt-1 accent-accent"
-      />
-      <span>
-        <span className="text-ink">{title}</span>
-        <span className="block text-xs text-muted">{desc}</span>
-      </span>
-    </label>
   );
 }

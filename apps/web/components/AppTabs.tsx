@@ -4,8 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const TABS = [
-  { href: "/app", label: "My claims" },
-  { href: "/verify", label: "Verifier portal" },
+  { href: "/app", label: "Claims" },
+  { href: "/verify", label: "Verify" },
+  { href: "/request", label: "Request" },
+  { href: "/issue", label: "Issue" },
 ];
 
 export function AppTabs() {
@@ -18,8 +20,8 @@ export function AppTabs() {
           <Link
             key={t.href}
             href={t.href}
-            className={`rounded-full px-4 py-1.5 transition ${
-              active ? "bg-accent text-white" : "text-muted hover:text-ink"
+            className={`rounded-full px-3 py-1.5 transition ${
+              active ? "bg-ink text-white" : "text-muted hover:text-ink"
             }`}
           >
             {t.label}

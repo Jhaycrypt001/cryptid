@@ -10,13 +10,18 @@
   },
   "dependencies": {
     "@piplabs/cdr-sdk": "^0.2.1",
+    "@rainbow-me/rainbowkit": "^2.2.11",
+    "@tanstack/react-query": "^5.100.14",
     "framer-motion": "^11.3.0",
     "lucide-react": "^0.408.0",
+    "multiformats": "^13.4.2",
     "next": "^14.2.5",
+    "qrcode.react": "^4.2.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "server-only": "^0.0.1",
-    "viem": "^2.21.0"
+    "viem": "^2.21.0",
+    "wagmi": "^2.19.5"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
